@@ -1,0 +1,57 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,5 +1,4 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 1: a 3 by 3 convolution, ReLU and a bias add, computed
+-directly in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 1."""
+ import torch
+ import torch.nn as nn
+ import triton
+@@ -18,24 +17,41 @@
+     offs_c = pid_c * BLOCK_C + tl.arange(0, BLOCK_C)
+     mask_p = offs_p < NB * OH * OW
+     mask_c = offs_c < OC
++    
++    # Decompose index into batch, output height, output width
+     ow = offs_p % OW
+     t = offs_p // OW
+     oh = t % OH
+     n = t // OH
+-    R = C * KH * KW
++    
++    # Precompute offsets for output
++    y_off = ((n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]) * OW + ow[:, None]
++    
++    # Initialize accumulator
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for r in range(0, R):
+-        c = r // (KH * KW)
+-        rem = r % (KH * KW)
++    
++    # Convolution loop with better memory access
++    for k in range(0, C * KH * KW, 1):
++        c = k // (KH * KW)
++        rem = k % (KH * KW)
+         ih = oh + rem // KW
+         iw = ow + rem % KW
++        
++        # Load input value
+         xv = tl.load(x_ptr + ((n * C + c) * H + ih) * W + iw, mask=mask_p, other=0.0)
+-        wv = tl.load(w_ptr + offs_c * R + r, mask=mask_c, other=0.0)
++        
++        # Load weight value
++        wv = tl.load(w_ptr + (offs_c * (C * KH * KW) + k), mask=mask_c, other=0.0)
++        
++        # Accumulate
+         acc += xv[:, None] * wv[None, :]
++    
++    # Load bias and apply ReLU
+     cb = tl.load(cb_ptr + offs_c, mask=mask_c, other=0.0)
+     b = tl.load(b_ptr + offs_c, mask=mask_c, other=0.0)
+     acc = tl.maximum(acc + cb[None, :], 0.0) + b[None, :]
+-    y_off = ((n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]) * OW + ow[:, None]
++    
++    # Store result
+     tl.store(y_ptr + y_off, acc, mask=mask_p[:, None] & mask_c[None, :])
+ 
+ 

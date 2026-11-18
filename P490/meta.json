@@ -1,0 +1,8 @@
+{
+ "pair": "P490",
+ "task": "level1__50_conv_standard_2D__square_input__square_kernel",
+ "edits_between_old_and_current": 3,
+ "kernels_launched_per_call": [
+  "conv2d_kernel"
+ ]
+}

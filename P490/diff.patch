@@ -1,0 +1,58 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -24,25 +24,38 @@
+     oh = t % OH
+     n = t // OH
+     
++    # Precompute base indices for output
++    output_base = (n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]
++    output_offsets = output_base * OW + ow[:, None]
++    
+     # Initialize accumulator
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+     
+     # Loop over input channels and kernel elements
+     for c in range(0, C):
+-        # Load input data for this channel
++        # Load input channel data for this batch
+         x_ptr_base = x_ptr + (n * C + c) * H * W
++        
++        # Load weights for this channel and output channel
++        w_ptr_base = w_ptr + (offs_c * C * KH * KW + c * KH * KW)
++        
++        # Precompute input indices to avoid repeated calculations
++        ih_start = oh * stride - padding
++        iw_start = ow * stride - padding
++        
++        # Process kernel elements
+         for kh in range(0, KH):
++            ih = ih_start + kh
+             for kw in range(0, KW):
+-                ih = oh * stride - padding + kh
+-                iw = ow * stride - padding + kw
++                iw = iw_start + kw
+                 
+                 # Load input data with proper indexing
+-                x = tl.load(x_ptr_base + ih * W + iw, mask=mask_p & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W), other=0.0)
++                x = tl.load(x_ptr_base + ih * W + iw, mask=(ih >= 0) & (ih < H) & (iw >= 0) & (iw < W), other=0.0)
+                 
+-                # Load weight
+-                w = tl.load(w_ptr + (offs_c * C * KH * KW + c * KH * KW + kh * KW + kw), mask=mask_c, other=0.0)
++                # Load weight for this kernel element
++                w = tl.load(w_ptr_base + kh * KW + kw, mask=mask_c, other=0.0)
+                 
+-                # Accumulate using dot product
++                # Accumulate using dot product with IEEE precision
+                 acc += x[:, None] * w[None, :]
+     
+     # Add bias
+@@ -50,8 +63,7 @@
+     acc += bias[None, :]
+     
+     # Store output
+-    y_off = ((n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]) * OW + ow[:, None]
+-    tl.store(y_ptr + y_off, acc, mask=mask_p[:, None] & mask_c[None, :])
++    tl.store(y_ptr + output_offsets, acc, mask=mask_p[:, None] & mask_c[None, :])
+ 
+ 
+ class ModelNew(nn.Module):

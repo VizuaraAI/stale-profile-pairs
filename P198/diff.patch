@@ -1,0 +1,22 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -5,7 +5,7 @@
+ import triton.language as tl
+ 
+ DW_BLOCK = 256
+-PW_BLOCK_P, PW_BLOCK_C = 128, 64
++PW_BLOCK_P, PW_BLOCK_C = 128, 128
+ NUM_WARPS = 4
+ 
+ 
+@@ -24,7 +24,9 @@
+             ih = oh * stride - padding + kh * dilation
+             iw = ow * stride - padding + kw * dilation
+             m = mask & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W)
+-            xv = tl.load(x_ptr + nc * H * W + ih * W + iw, mask=m, other=0.0)
++            # Use linear indexing for better memory access
++            x_idx = nc * H * W + ih * W + iw
++            xv = tl.load(x_ptr + x_idx, mask=m, other=0.0)
+             wv = tl.load(w_ptr + c * KS * KS + kh * KS + kw)
+             acc += xv * wv
+     tl.store(y_ptr + nc * OH * OW + offs, acc, mask=mask)

@@ -1,0 +1,61 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,5 +1,4 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 1: a 3 by 3 convolution, ReLU and a bias add, computed
+-directly in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 1: a 3 by 3 convolution, ReLU and a bias add."""
+ import torch
+ import torch.nn as nn
+ import triton
+@@ -18,23 +17,43 @@
+     offs_c = pid_c * BLOCK_C + tl.arange(0, BLOCK_C)
+     mask_p = offs_p < NB * OH * OW
+     mask_c = offs_c < OC
++    
++    # Compute n, oh, ow from offs_p
+     ow = offs_p % OW
+     t = offs_p // OW
+     oh = t % OH
+     n = t // OH
++    
++    # Precompute indices for x to avoid repeated computation
+     R = C * KH * KW
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for r in range(0, R):
+-        c = r // (KH * KW)
+-        rem = r % (KH * KW)
+-        ih = oh + rem // KW
+-        iw = ow + rem % KW
+-        xv = tl.load(x_ptr + ((n * C + c) * H + ih) * W + iw, mask=mask_p, other=0.0)
+-        wv = tl.load(w_ptr + offs_c * R + r, mask=mask_c, other=0.0)
+-        acc += xv[:, None] * wv[None, :]
++    
++    # Load bias terms once
+     cb = tl.load(cb_ptr + offs_c, mask=mask_c, other=0.0)
+     b = tl.load(b_ptr + offs_c, mask=mask_c, other=0.0)
++    
++    # Convolution loop with optimized memory access
++    for c in range(0, C, 1):
++        for kh in range(KH):
++            for kw in range(KW):
++                ih = oh + kh
++                iw = ow + kw
++                
++                # Load input value with proper masking
++                x_idx = ((n * C + c) * H + ih) * W + iw
++                xv = tl.load(x_ptr + x_idx, mask=(ih < H) & (iw < W), other=0.0)
++                
++                # Load weight value
++                w_idx = (offs_c * C + c) * KH * KW + kh * KW + kw
++                wv = tl.load(w_ptr + w_idx, mask=mask_c, other=0.0)
++                
++                # Accumulate with fused operation
++                acc += xv[:, None] * wv[None, :]
++    
++    # Apply ReLU and bias
+     acc = tl.maximum(acc + cb[None, :], 0.0) + b[None, :]
++    
++    # Store output
+     y_off = ((n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]) * OW + ow[:, None]
+     tl.store(y_ptr + y_off, acc, mask=mask_p[:, None] & mask_c[None, :])
+ 

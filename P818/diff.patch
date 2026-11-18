@@ -1,0 +1,55 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,5 +1,4 @@
+-"""Hand-written starting kernel for KernelBench level 1 task 40, layer normalization: one kernel for the statistics of
+-each sample, one to normalize."""
++"""Optimized Triton kernel for Layer Normalization."""
+ import math
+ 
+ import torch
+@@ -7,20 +6,25 @@
+ import triton
+ import triton.language as tl
+ 
+-STATS_BLOCK, APPLY_BLOCK = 1024, 1024
++STATS_BLOCK, APPLY_BLOCK = 512, 512
+ 
+ 
+ @triton.jit
+ def ln_stats_kernel(x_ptr, mean_ptr, rstd_ptr, L, eps, BLOCK: tl.constexpr):
+     row = tl.program_id(0)
+     base = x_ptr + row * L
++    
++    # Shared memory for reduction
+     acc1 = tl.zeros((BLOCK,), dtype=tl.float32)
+     acc2 = tl.zeros((BLOCK,), dtype=tl.float32)
++    
+     for start in range(0, L, BLOCK):
+         offs = start + tl.arange(0, BLOCK)
+         v = tl.load(base + offs, mask=offs < L, other=0.0)
+         acc1 += v
+         acc2 += v * v
++    
++    # Reduce within block
+     mean = tl.sum(acc1, axis=0) / L
+     var = tl.sum(acc2, axis=0) / L - mean * mean
+     tl.store(mean_ptr + row, mean)
+@@ -33,12 +37,17 @@
+     chunk = tl.program_id(1)
+     offs = chunk * BLOCK + tl.arange(0, BLOCK)
+     mask = offs < L
++    
+     mean = tl.load(mean_ptr + row)
+     rstd = tl.load(rstd_ptr + row)
++    
+     x = tl.load(x_ptr + row * L + offs, mask=mask, other=0.0)
+     w = tl.load(w_ptr + offs, mask=mask, other=1.0)
+     b = tl.load(b_ptr + offs, mask=mask, other=0.0)
+-    tl.store(y_ptr + row * L + offs, (x - mean) * rstd * w + b, mask=mask)
++    
++    # Compute output with proper masking
++    y = (x - mean) * rstd * w + b
++    tl.store(y_ptr + row * L + offs, y, mask=mask)
+ 
+ 
+ class ModelNew(nn.Module):

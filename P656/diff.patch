@@ -1,0 +1,60 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -5,7 +5,7 @@
+ import triton.language as tl
+ 
+ DW_BLOCK = 256
+-PW_BLOCK_P, PW_BLOCK_C = 128, 32
++PW_BLOCK_P, PW_BLOCK_C = 128, 128
+ NUM_WARPS = 4
+ 
+ 
+@@ -19,8 +19,8 @@
+     oh = offs // OW
+     ow = offs % OW
+     acc = tl.zeros((BLOCK,), dtype=tl.float32)
+-    for kh in tl.static_range(KS):
+-        for kw in tl.static_range(KS):
++    for kh in range(KS):
++        for kw in range(KS):
+             ih = oh * stride - padding + kh * dilation
+             iw = ow * stride - padding + kw * dilation
+             m = mask & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W)
+@@ -40,22 +40,34 @@
+     mask_p = offs_p < P
+     mask_c = offs_c < OC
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for c in range(0, C, 4):
+-        # Load 4 channels of input at a time
++    for c in range(0, C, 8):
++        # Load 8 channels of input at a time
+         xv0 = tl.load(x_ptr + (n * C + c + 0) * P + offs_p, mask=mask_p, other=0.0)
+         xv1 = tl.load(x_ptr + (n * C + c + 1) * P + offs_p, mask=mask_p, other=0.0)
+         xv2 = tl.load(x_ptr + (n * C + c + 2) * P + offs_p, mask=mask_p, other=0.0)
+         xv3 = tl.load(x_ptr + (n * C + c + 3) * P + offs_p, mask=mask_p, other=0.0)
+-        # Load 4 weights at a time
++        xv4 = tl.load(x_ptr + (n * C + c + 4) * P + offs_p, mask=mask_p, other=0.0)
++        xv5 = tl.load(x_ptr + (n * C + c + 5) * P + offs_p, mask=mask_p, other=0.0)
++        xv6 = tl.load(x_ptr + (n * C + c + 6) * P + offs_p, mask=mask_p, other=0.0)
++        xv7 = tl.load(x_ptr + (n * C + c + 7) * P + offs_p, mask=mask_p, other=0.0)
++        # Load 8 weights at a time
+         wv0 = tl.load(w_ptr + offs_c * C + c + 0, mask=mask_c, other=0.0)
+         wv1 = tl.load(w_ptr + offs_c * C + c + 1, mask=mask_c, other=0.0)
+         wv2 = tl.load(w_ptr + offs_c * C + c + 2, mask=mask_c, other=0.0)
+         wv3 = tl.load(w_ptr + offs_c * C + c + 3, mask=mask_c, other=0.0)
++        wv4 = tl.load(w_ptr + offs_c * C + c + 4, mask=mask_c, other=0.0)
++        wv5 = tl.load(w_ptr + offs_c * C + c + 5, mask=mask_c, other=0.0)
++        wv6 = tl.load(w_ptr + offs_c * C + c + 6, mask=mask_c, other=0.0)
++        wv7 = tl.load(w_ptr + offs_c * C + c + 7, mask=mask_c, other=0.0)
+         # Accumulate
+         acc += xv0[:, None] * wv0[None, :]
+         acc += xv1[:, None] * wv1[None, :]
+         acc += xv2[:, None] * wv2[None, :]
+         acc += xv3[:, None] * wv3[None, :]
++        acc += xv4[:, None] * wv4[None, :]
++        acc += xv5[:, None] * wv5[None, :]
++        acc += xv6[:, None] * wv6[None, :]
++        acc += xv7[:, None] * wv7[None, :]
+     tl.store(y_ptr + (n * OC + offs_c[None, :]) * P + offs_p[:, None], acc, mask=mask_p[:, None] & mask_c[None, :])
+ 
+ 

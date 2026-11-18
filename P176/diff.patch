@@ -1,0 +1,45 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,12 +1,11 @@
+-"""Hand-written starting kernel for KernelBench level 1 task 86: a depthwise 3 by 3 convolution into an intermediate
+-tensor, then a pointwise convolution, one kernel each."""
++"""Optimized Triton kernel for depthwise-separable convolution."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+ DW_BLOCK = 256
+-PW_BLOCK_P, PW_BLOCK_C = 128, 32
++PW_BLOCK_P, PW_BLOCK_C = 128, 64
+ NUM_WARPS = 4
+ 
+ 
+@@ -41,10 +40,26 @@
+     mask_p = offs_p < P
+     mask_c = offs_c < OC
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for c in range(0, C):
++    
++    # Process multiple channels in parallel to reduce register pressure
++    for c in range(0, C, 4):
++        # Load 4 channels at once
+         xv = tl.load(x_ptr + (n * C + c) * P + offs_p, mask=mask_p, other=0.0)
+         wv = tl.load(w_ptr + offs_c * C + c, mask=mask_c, other=0.0)
+         acc += xv[:, None] * wv[None, :]
++        if c + 1 < C:
++            xv = tl.load(x_ptr + (n * C + c + 1) * P + offs_p, mask=mask_p, other=0.0)
++            wv = tl.load(w_ptr + offs_c * C + c + 1, mask=mask_c, other=0.0)
++            acc += xv[:, None] * wv[None, :]
++        if c + 2 < C:
++            xv = tl.load(x_ptr + (n * C + c + 2) * P + offs_p, mask=mask_p, other=0.0)
++            wv = tl.load(w_ptr + offs_c * C + c + 2, mask=mask_c, other=0.0)
++            acc += xv[:, None] * wv[None, :]
++        if c + 3 < C:
++            xv = tl.load(x_ptr + (n * C + c + 3) * P + offs_p, mask=mask_p, other=0.0)
++            wv = tl.load(w_ptr + offs_c * C + c + 3, mask=mask_c, other=0.0)
++            acc += xv[:, None] * wv[None, :]
++    
+     tl.store(y_ptr + (n * OC + offs_c[None, :]) * P + offs_p[:, None], acc, mask=mask_p[:, None] & mask_c[None, :])
+ 
+ 

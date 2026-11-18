@@ -1,0 +1,8 @@
+{
+ "pair": "P533",
+ "task": "level1__3_Batched_matrix_multiplication",
+ "edits_between_old_and_current": 3,
+ "kernels_launched_per_call": [
+  "bmm_kernel"
+ ]
+}
