@@ -1,0 +1,18 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -18,12 +18,11 @@
+     c_ptr += bid * M * N
+     offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+-    offs_k = tl.arange(0, BLOCK_K)
+     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+     for k in range(0, tl.cdiv(K, BLOCK_K)):
+-        cols = k * BLOCK_K + offs_k
+-        a = tl.load(a_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (cols[None, :] < K), other=0.0)
+-        b = tl.load(b_ptr + cols[:, None] * N + offs_n[None, :], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
++        offs_k = k * BLOCK_K + tl.arange(0, BLOCK_K)
++        a = tl.load(a_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (offs_k[None, :] < K), other=0.0)
++        b = tl.load(b_ptr + offs_k[:, None] * N + offs_n[None, :], mask=(offs_k[:, None] < K) & (offs_n[None, :] < N), other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+     tl.store(c_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
+ 

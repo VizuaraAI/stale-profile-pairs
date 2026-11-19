@@ -1,0 +1,13 @@
+Kernel matmul_kernel: grid 4096, block 128 threads, duration 3.49 ms under the profiler.
+Throughput, percent of peak: compute 75.3, memory 68.9, DRAM 7.6, L2 43.9, L1 68.9.
+Hit rates: L1 0.0%, L2 98.4%.
+Occupancy: 24.5% of 48 warps per SM achieved. Block limits per SM: by block size 24, by registers 5 (96 per thread), by shared memory 3 (33792 bytes per block).
+Largest stall reasons, share of stall samples: short_scoreboard 35%, dispatch_stall 35%, barrier 13%, mio_throttle 7%.
+
+Hottest source lines, share of samples in this file:
+  line 23, 59.4%: acc = tl.dot(a, b, acc, input_precision="ieee")
+  line 21, 22.0%: a = tl.load(a_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (o
+  line 22, 14.2%: b = tl.load(b_ptr + offs_k[:, None] * N + offs_n[None, :], mask=(offs_k[:, None] < K) & (o
+  line 19, 3.9%: for k in range(0, tl.cdiv(K, BLOCK_K)):
+  line 25, 0.3%: tl.store(c_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & 
+  line 15, 0.2%: offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)

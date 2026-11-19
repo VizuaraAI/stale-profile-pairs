@@ -1,0 +1,17 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,11 +1,11 @@
+-"""Hand-written starting kernel for KernelBench level 1 task 3, batched matrix multiplication."""
++"""Hand-written optimized kernel for KernelBench level 1 task 3, batched matrix multiplication."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 32, 32, 32
+-NUM_WARPS, NUM_STAGES = 4, 1
++BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
++NUM_WARPS, NUM_STAGES = 4, 3
+ 
+ 
+ @triton.jit
