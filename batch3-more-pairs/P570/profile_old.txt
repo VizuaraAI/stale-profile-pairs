@@ -1,0 +1,13 @@
+Kernel linear_mish_kernel: grid 2048, block 128 threads, duration 7.63 ms under the profiler.
+Throughput, percent of peak: compute 23.2, memory 93.9, DRAM 6.3, L2 18.3, L1 93.9.
+Hit rates: L1 0.2%, L2 96.5%.
+Occupancy: 24.0% of 48 warps per SM achieved. Block limits per SM: by block size 24, by registers 3 (155 per thread), by shared memory 3 (17408 bytes per block).
+Largest stall reasons, share of stall samples: mio_throttle 47%, short_scoreboard 35%, barrier 7%, long_scoreboard 6%.
+
+Hottest source lines, share of samples in this file:
+  line 31, 41.0%: acc = tl.dot(a, b, acc, input_precision="ieee")
+  line 29, 35.0%: a = tl.load(x_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (o
+  line 30, 23.5%: b = tl.load(w_ptr + offs_n[None, :] * K + offs_k[:, None], mask=(offs_k[:, None] < K) & (o
+  line 27, 0.2%: for k in range(0, tl.cdiv(K, BLOCK_K)):
+  line 14, 0.1%: sp = tl.where(x > 20.0, x, tl.log(1.0 + tl.exp(tl.minimum(x, 20.0))))
+  line 34, 0.0%: tl.store(y_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & 

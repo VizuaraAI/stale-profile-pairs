@@ -17,3 +17,7 @@ The raw Nsight Compute reports are on our side; ask if a pair needs them.
 ## Batch 2
 
 `batch2-earlier-checkpoints/` holds 21 more pairs, taken earlier in the trajectories where the current kernel was still well behind the best one found so far. Same format, new random ids, its own `labels_template.csv` and README.
+
+## Batch 3
+
+`batch3-more-pairs/` holds 16 more pairs from the third branch test, mostly from trajectories the earlier packages did not use, with three or four pairs in each task and one new task. Same format, new random ids, its own `labels_template.csv` and README.

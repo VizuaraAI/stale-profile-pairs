@@ -1,0 +1,13 @@
+Kernel linear_act_kernel: grid 512, block 128 threads, duration 6.01 ms under the profiler.
+Throughput, percent of peak: compute 32.0, memory 40.5, DRAM 9.0, L2 21.2, L1 40.5.
+Hit rates: L1 31.3%, L2 95.6%.
+Occupancy: 8.3% of 48 warps per SM achieved. Block limits per SM: by block size 24, by registers 2 (255 per thread), by shared memory 1 (66560 bytes per block).
+Largest stall reasons, share of stall samples: short_scoreboard 27%, long_scoreboard 20%, dispatch_stall 17%, no_instructions 16%.
+
+Hottest source lines, share of samples in this file:
+  line 23, 72.0%: acc = tl.dot(a, b, acc, input_precision="ieee")
+  line 21, 16.9%: a = tl.load(x_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (o
+  line 22, 5.4%: b = tl.load(w_ptr + offs_n[None, :] * K + offs_k[:, None], mask=(offs_k[:, None] < K) & (o
+  line 16, 3.3%: offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+  line 19, 1.8%: for k in range(0, tl.cdiv(K, BLOCK_K)):
+  line 17, 0.3%: offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)

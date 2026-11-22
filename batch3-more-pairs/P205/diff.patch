@@ -1,0 +1,38 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,15 +1,16 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 32, 32, 32
+-NUM_WARPS, NUM_STAGES = 4, 1
++BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
++NUM_WARPS, NUM_STAGES = 8, 3
+ 
+ 
+ @triton.jit
+ def _mish(x):
++    # Numerically stable Mish implementation
+     sp = tl.where(x > 20.0, x, tl.log(1.0 + tl.exp(tl.minimum(x, 20.0))))
+     t = 1.0 - 2.0 / (tl.exp(2.0 * sp) + 1.0)
+     return x * t
+@@ -22,12 +23,11 @@
+     pid_n = tl.program_id(1)
+     offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+-    offs_k = tl.arange(0, BLOCK_K)
+     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+     for k in range(0, tl.cdiv(K, BLOCK_K)):
+-        cols = k * BLOCK_K + offs_k
+-        a = tl.load(x_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (cols[None, :] < K), other=0.0)
+-        b = tl.load(w_ptr + offs_n[None, :] * K + cols[:, None], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
++        offs_k = k * BLOCK_K + tl.arange(0, BLOCK_K)
++        a = tl.load(x_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (offs_k[None, :] < K), other=0.0)
++        b = tl.load(w_ptr + offs_n[None, :] * K + offs_k[:, None], mask=(offs_k[:, None] < K) & (offs_n[None, :] < N), other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+     bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
+     acc = _mish(_mish(acc + bias[None, :]))
