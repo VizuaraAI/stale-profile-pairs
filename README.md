@@ -21,3 +21,7 @@ The raw Nsight Compute reports are on our side; ask if a pair needs them.
 ## Batch 3
 
 `batch3-more-pairs/` holds 16 more pairs from the third branch test, mostly from trajectories the earlier packages did not use, with three or four pairs in each task and one new task. Same format, new random ids, its own `labels_template.csv` and README.
+
+## Outcomes for batches 1 and 2
+
+`outcomes-batches-1-2/` gives the per-pair outcomes for the 51 pairs you have already labelled (batches 1 and 2), for building the re-profiling rule. Batch 3 outcomes stay held until its labels and the rule are fixed.
