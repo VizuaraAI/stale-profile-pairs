@@ -25,3 +25,7 @@ The raw Nsight Compute reports are on our side; ask if a pair needs them.
 ## Outcomes for batches 1 and 2
 
 `outcomes-batches-1-2/` gives the per-pair outcomes for the 51 pairs you have already labelled (batches 1 and 2), for building the re-profiling rule. Batch 3 outcomes stay held until its labels and the rule are fixed.
+
+## Outcomes for batch 3
+
+`outcomes-batch-3/` gives the outcomes for the 16 batch 3 pairs, released after the batch 3 labels and the re-profiling rule were both fixed.
