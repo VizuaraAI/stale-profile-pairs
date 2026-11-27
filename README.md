@@ -29,3 +29,9 @@ The raw Nsight Compute reports are on our side; ask if a pair needs them.
 ## Outcomes for batch 3
 
 `outcomes-batch-3/` gives the outcomes for the 16 batch 3 pairs, released after the batch 3 labels and the re-profiling rule were both fixed.
+
+## H100 profiles for batches 1 to 3
+
+`h100-profiles-67-pairs/` has the same 67 pair ids and kernel files, with Nsight Compute summaries taken on one NVIDIA
+H100 80GB HBM3 instead of the L40S (`profile_old_h100.txt`, `profile_current_h100.txt`), using the same command and
+summary format. Every kernel ran correctly on the H100 before profiling. No outcomes or labels are included.

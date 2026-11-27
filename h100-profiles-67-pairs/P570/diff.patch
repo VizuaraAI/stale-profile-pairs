@@ -1,0 +1,29 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,11 +1,11 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 64, 64, 32
+-NUM_WARPS, NUM_STAGES = 4, 1
++BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
++NUM_WARPS, NUM_STAGES = 8, 3
+ 
+ 
+ @triton.jit
+@@ -30,7 +30,10 @@
+         b = tl.load(w_ptr + offs_n[None, :] * K + offs_k[:, None], mask=(offs_k[:, None] < K) & (offs_n[None, :] < N), other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+     bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
+-    acc = _mish(_mish(acc + bias[None, :]))
++    acc = acc + bias[None, :]
++    # Apply Mish twice using a single pass
++    acc = _mish(acc)
++    acc = _mish(acc)
+     tl.store(y_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
+ 
+ 

@@ -1,0 +1,44 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -5,7 +5,7 @@
+ import triton.language as tl
+ 
+ DW_BLOCK = 512
+-PW_BLOCK_P, PW_BLOCK_C = 256, 64
++PW_BLOCK_P, PW_BLOCK_C = 256, 128
+ NUM_WARPS = 4
+ 
+ 
+@@ -18,11 +18,16 @@
+     mask = offs < OH * OW
+     oh = offs // OW
+     ow = offs % OW
++    
++    # Precompute indices to avoid repeated arithmetic
++    oh_base = oh * stride - padding
++    ow_base = ow * stride - padding
++    
+     acc = tl.zeros((BLOCK,), dtype=tl.float32)
+     for kh in tl.static_range(KS):
++        ih = oh_base + kh * dilation
+         for kw in tl.static_range(KS):
+-            ih = oh * stride - padding + kh * dilation
+-            iw = ow * stride - padding + kw * dilation
++            iw = ow_base + kw * dilation
+             m = mask & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W)
+             xv = tl.load(x_ptr + nc * H * W + ih * W + iw, mask=m, other=0.0)
+             wv = tl.load(w_ptr + c * KS * KS + kh * KS + kw)
+@@ -39,9 +44,11 @@
+     offs_c = pid_c * BLOCK_C + tl.arange(0, BLOCK_C)
+     mask_p = offs_p < P
+     mask_c = offs_c < OC
++    
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for c in range(0, C, 4):
+-        # Process 4 channels at a time to reduce loop overhead
++    for c in tl.range(0, C, 4, num_stages=3):
++        # Load 4 channels at a time to reduce loop overhead
++        # Use vectorized loads for better memory coalescing
+         xv = tl.load(x_ptr + (n * C + c) * P + offs_p, mask=mask_p, other=0.0)
+         wv = tl.load(w_ptr + offs_c * C + c, mask=mask_c, other=0.0)
+         acc += xv[:, None] * wv[None, :]

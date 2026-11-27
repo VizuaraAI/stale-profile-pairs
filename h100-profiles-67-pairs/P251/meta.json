@@ -1,0 +1,8 @@
+{
+ "pair": "P251",
+ "task": "level2__29_Matmul_Mish_Mish",
+ "edits_between_old_and_current": 2,
+ "kernels_launched_per_call": [
+  "linear_mish_kernel"
+ ]
+}

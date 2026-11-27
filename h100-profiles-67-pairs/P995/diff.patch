@@ -1,0 +1,11 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -5,7 +5,7 @@
+ import triton.language as tl
+ 
+ BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
+-NUM_WARPS, NUM_STAGES = 4, 2
++NUM_WARPS, NUM_STAGES = 8, 3
+ 
+ 
+ @triton.jit

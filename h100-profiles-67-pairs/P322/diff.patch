@@ -1,0 +1,36 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -20,17 +20,28 @@
+     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+     offs_k = tl.arange(0, BLOCK_K)
+     
++    # Initialize accumulator
+     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
++    
++    # Load bias
++    bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
++    
++    # Loop over K dimension
+     for k in range(0, tl.cdiv(K, BLOCK_K)):
+-        cols = k * BLOCK_K + offs_k
+-        a = tl.load(x_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (cols[None, :] < K), other=0.0)
+-        b = tl.load(w_ptr + offs_n[None, :] * K + cols[:, None], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
++        # Load tiles
++        a = tl.load(x_ptr + offs_m[:, None] * K + (k * BLOCK_K + offs_k)[None, :], 
++                    mask=offs_m[:, None] < M, other=0.0)
++        b = tl.load(w_ptr + offs_n[None, :] * K + (k * BLOCK_K + offs_k)[:, None], 
++                    mask=offs_n[None, :] < N, other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+     
+-    bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
++    # Apply bias, multiplier, and activation
+     acc = (acc + bias[None, :]) * multiplier
+     acc = tl.where(acc >= 0, acc, acc * negative_slope)
+-    tl.store(y_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
++    
++    # Store result
++    tl.store(y_ptr + offs_m[:, None] * N + offs_n[None, :], acc, 
++             mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
+ 
+ 
+ class ModelNew(nn.Module):

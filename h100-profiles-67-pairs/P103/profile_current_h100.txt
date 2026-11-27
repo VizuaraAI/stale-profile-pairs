@@ -1,0 +1,13 @@
+Kernel conv_relu_bias_kernel: grid 15876, block 128 threads, duration 19.15 ms under the profiler.
+Throughput, percent of peak: compute 40.6, memory 77.4, DRAM 7.8, L2 26.5, L1 77.4.
+Hit rates: L1 85.7%, L2 92.5%.
+Occupancy: 12.4% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 2 (255 per thread), by shared memory 4 (2048 bytes per block).
+Largest stall reasons, share of stall samples: short_scoreboard 31%, wait 14%, mio_throttle 14%, barrier 11%.
+
+Hottest source lines, share of samples in this file:
+  line 91, 15.9%: acc += xv[:, None] * wv[None, :]
+  line 92, 7.9%: acc += xv1[:, None] * wv1[None, :]
+  line 96, 7.7%: acc += xv5[:, None] * wv5[None, :]
+  line 94, 7.4%: acc += xv3[:, None] * wv3[None, :]
+  line 93, 7.4%: acc += xv2[:, None] * wv2[None, :]
+  line 97, 7.0%: acc += xv6[:, None] * wv6[None, :]

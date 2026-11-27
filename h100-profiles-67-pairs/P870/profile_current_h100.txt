@@ -1,0 +1,19 @@
+Kernel depthwise_kernel: grid 524288, block 128 threads, duration 1.05 ms under the profiler.
+Throughput, percent of peak: compute 60.9, memory 98.5, DRAM 60.4, L2 75.7, L1 98.5.
+Hit rates: L1 86.1%, L2 66.5%.
+Occupancy: 93.0% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 16 (32 per thread), by shared memory 32 (1024 bytes per block).
+Largest stall reasons, share of stall samples: long_scoreboard 52%, lg_throttle 19%, wait 7%, mio_throttle 6%.
+
+Kernel pointwise_kernel_improved: grid 32768, block 128 threads, duration 4.57 ms under the profiler.
+Throughput, percent of peak: compute 32.7, memory 75.5, DRAM 27.9, L2 28.4, L1 75.5.
+Hit rates: L1 65.2%, L2 51.5%.
+Occupancy: 18.7% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 3 (166 per thread), by shared memory 4 (33792 bytes per block).
+Largest stall reasons, share of stall samples: long_scoreboard 59%, short_scoreboard 22%, barrier 11%, wait 5%.
+
+Hottest source lines, share of samples in this file:
+  line 84, 74.3%: acc += xv[:, None] * wv[None, :]
+  line 27, 9.7%: xv = tl.load(x_ptr + nc * H * W + ih * W + iw, mask=m, other=0.0)
+  line 29, 4.2%: acc += xv * wv
+  line 81, 2.7%: for c in range(C):
+  line 86, 2.6%: tl.store(y_ptr + (n * OC + offs_c[None, :]) * P + offs_p[:, None], acc, mask=mask_p[:, Non
+  line 28, 1.5%: wv = tl.load(w_ptr + c * KS * KS + kh * KS + kw)

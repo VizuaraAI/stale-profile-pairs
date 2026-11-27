@@ -1,0 +1,9 @@
+{
+ "pair": "P656",
+ "task": "level1__86_conv_depthwise_separable_2D",
+ "edits_between_old_and_current": 3,
+ "kernels_launched_per_call": [
+  "depthwise_kernel",
+  "pointwise_kernel"
+ ]
+}

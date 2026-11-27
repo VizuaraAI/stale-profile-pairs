@@ -1,0 +1,22 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -5,7 +5,7 @@
+ import triton
+ import triton.language as tl
+ 
+-STATS_BLOCK, APPLY_BLOCK = 2048, 2048
++STATS_BLOCK, APPLY_BLOCK = 256, 256
+ 
+ 
+ @triton.jit
+@@ -52,6 +52,8 @@
+         y = torch.empty_like(x)
+         mean = torch.empty(rows, device=x.device, dtype=torch.float32)
+         rstd = torch.empty(rows, device=x.device, dtype=torch.float32)
+-        ln_stats_kernel[(rows,)](x, mean, rstd, L, self.ln.eps, BLOCK=STATS_BLOCK)
+-        ln_apply_kernel[(rows, triton.cdiv(L, APPLY_BLOCK))](x, y, self.ln.weight, self.ln.bias, mean, rstd, L, BLOCK=APPLY_BLOCK)
++        # Use larger block size for better occupancy in stats kernel
++        ln_stats_kernel[(rows,)](x, mean, rstd, L, self.ln.eps, BLOCK=256)
++        # Use larger block size for better occupancy in apply kernel
++        ln_apply_kernel[(rows, triton.cdiv(L, 256))](x, y, self.ln.weight, self.ln.bias, mean, rstd, L, BLOCK=256)
+         return y

@@ -1,0 +1,8 @@
+{
+ "pair": "P381",
+ "task": "level1__1_Square_matrix_multiplication_",
+ "edits_between_old_and_current": 1,
+ "kernels_launched_per_call": [
+  "matmul_kernel"
+ ]
+}

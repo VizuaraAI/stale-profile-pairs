@@ -1,0 +1,13 @@
+Kernel conv2d_kernel: grid 18150, block 128 threads, duration 4.41 ms under the profiler.
+Throughput, percent of peak: compute 37.3, memory 59.5, DRAM 5.2, L2 26.7, L1 59.5.
+Hit rates: L1 96.9%, L2 84.7%.
+Occupancy: 24.8% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 4 (128 per thread), by shared memory 10 (1536 bytes per block).
+Largest stall reasons, share of stall samples: long_scoreboard 49%, barrier 17%, wait 11%, short_scoreboard 7%.
+
+Hottest source lines, share of samples in this file:
+  line 46, 70.4%: acc += x[:, None] * w[None, :]
+  line 54, 11.5%: tl.store(y_ptr + y_off, acc, mask=mask_p[:, None] & mask_c[None, :])
+  line 40, 7.8%: x = tl.load(x_ptr_base + ih * W + iw, mask=mask_p & (ih >= 0) & (ih < H) & (iw >= 0) & (iw
+  line 43, 3.4%: w = tl.load(w_ptr + (offs_c * C * KH * KW + c * KH * KW + kh * KW + kw), mask=mask_c, othe
+  line 35, 2.4%: for kw in range(0, KW):
+  line 23, 1.2%: t = offs_p // OW

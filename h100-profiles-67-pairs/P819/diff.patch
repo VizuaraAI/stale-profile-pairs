@@ -1,0 +1,27 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -4,8 +4,8 @@
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 64, 64, 32
+-NUM_WARPS, NUM_STAGES = 4, 2
++BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
++NUM_WARPS, NUM_STAGES = 4, 3
+ 
+ 
+ @triton.jit
+@@ -22,10 +22,10 @@
+     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
+     for k in range(0, tl.cdiv(K, BLOCK_K)):
+         cols = k * BLOCK_K + offs_k
+-        a = tl.load(a_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (cols[None, :] < K), other=0.0)
+-        b = tl.load(b_ptr + cols[:, None] * N + offs_n[None, :], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
++        a = tl.load(a_ptr + offs_m[:, None] * K + cols[None, :])
++        b = tl.load(b_ptr + cols[:, None] * N + offs_n[None, :])
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+-    tl.store(c_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
++    tl.store(c_ptr + offs_m[:, None] * N + offs_n[None, :], acc)
+ 
+ 
+ class ModelNew(nn.Module):

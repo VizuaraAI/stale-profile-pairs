@@ -1,0 +1,13 @@
+Kernel bmm_kernel: grid 32768, block 128 threads, duration 6.30 ms under the profiler.
+Throughput, percent of peak: compute 78.4, memory 72.9, DRAM 8.9, L2 29.9, L1 72.9.
+Hit rates: L1 0.0%, L2 85.7%.
+Occupancy: 31.1% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 5 (96 per thread), by shared memory 7 (17408 bytes per block).
+Largest stall reasons, share of stall samples: dispatch_stall 35%, short_scoreboard 24%, barrier 16%, long_scoreboard 15%.
+
+Hottest source lines, share of samples in this file:
+  line 27, 45.2%: acc = tl.dot(a, b, acc, input_precision="ieee")
+  line 25, 29.1%: a = tl.load(a_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (col
+  line 26, 17.2%: b = tl.load(b_ptr + cols[:, None] * N + offs_n[None, :], mask=(cols[:, None] < K) & (offs_
+  line 23, 6.7%: for k in range(0, tl.cdiv(K, BLOCK_K)):
+  line 19, 0.8%: offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+  line 28, 0.4%: tl.store(c_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & 

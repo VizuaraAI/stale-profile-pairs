@@ -1,0 +1,101 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,11 +1,10 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 1: a 3 by 3 convolution, ReLU and a bias add, computed
+-directly in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 1: a 3 by 3 convolution, ReLU and a bias add."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_P, BLOCK_C = 128, 32
++BLOCK_P, BLOCK_C = 256, 64
+ NUM_WARPS = 4
+ 
+ 
+@@ -22,16 +21,82 @@
+     t = offs_p // OW
+     oh = t % OH
+     n = t // OH
++
++    # Precompute indices for better memory access
+     R = C * KH * KW
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for r in range(0, R):
++    
++    # Process 8 elements per iteration to reduce loop overhead
++    for r in range(0, R, 8):  # Process 8 elements per iteration
++        # Load weights in chunks
++        wv = tl.load(w_ptr + offs_c * R + r, mask=mask_c, other=0.0)
++        wv1 = tl.load(w_ptr + offs_c * R + r + 1, mask=mask_c, other=0.0)
++        wv2 = tl.load(w_ptr + offs_c * R + r + 2, mask=mask_c, other=0.0)
++        wv3 = tl.load(w_ptr + offs_c * R + r + 3, mask=mask_c, other=0.0)
++        wv4 = tl.load(w_ptr + offs_c * R + r + 4, mask=mask_c, other=0.0)
++        wv5 = tl.load(w_ptr + offs_c * R + r + 5, mask=mask_c, other=0.0)
++        wv6 = tl.load(w_ptr + offs_c * R + r + 6, mask=mask_c, other=0.0)
++        wv7 = tl.load(w_ptr + offs_c * R + r + 7, mask=mask_c, other=0.0)
++
++        # Load input values efficiently
+         c = r // (KH * KW)
+         rem = r % (KH * KW)
+         ih = oh + rem // KW
+         iw = ow + rem % KW
+         xv = tl.load(x_ptr + ((n * C + c) * H + ih) * W + iw, mask=mask_p, other=0.0)
+-        wv = tl.load(w_ptr + offs_c * R + r, mask=mask_c, other=0.0)
++
++        c1 = (r + 1) // (KH * KW)
++        rem1 = (r + 1) % (KH * KW)
++        ih1 = oh + rem1 // KW
++        iw1 = ow + rem1 % KW
++        xv1 = tl.load(x_ptr + ((n * C + c1) * H + ih1) * W + iw1, mask=mask_p, other=0.0)
++
++        c2 = (r + 2) // (KH * KW)
++        rem2 = (r + 2) % (KH * KW)
++        ih2 = oh + rem2 // KW
++        iw2 = ow + rem2 % KW
++        xv2 = tl.load(x_ptr + ((n * C + c2) * H + ih2) * W + iw2, mask=mask_p, other=0.0)
++
++        c3 = (r + 3) // (KH * KW)
++        rem3 = (r + 3) % (KH * KW)
++        ih3 = oh + rem3 // KW
++        iw3 = ow + rem3 % KW
++        xv3 = tl.load(x_ptr + ((n * C + c3) * H + ih3) * W + iw3, mask=mask_p, other=0.0)
++
++        c4 = (r + 4) // (KH * KW)
++        rem4 = (r + 4) % (KH * KW)
++        ih4 = oh + rem4 // KW
++        iw4 = ow + rem4 % KW
++        xv4 = tl.load(x_ptr + ((n * C + c4) * H + ih4) * W + iw4, mask=mask_p, other=0.0)
++
++        c5 = (r + 5) // (KH * KW)
++        rem5 = (r + 5) % (KH * KW)
++        ih5 = oh + rem5 // KW
++        iw5 = ow + rem5 % KW
++        xv5 = tl.load(x_ptr + ((n * C + c5) * H + ih5) * W + iw5, mask=mask_p, other=0.0)
++
++        c6 = (r + 6) // (KH * KW)
++        rem6 = (r + 6) % (KH * KW)
++        ih6 = oh + rem6 // KW
++        iw6 = ow + rem6 % KW
++        xv6 = tl.load(x_ptr + ((n * C + c6) * H + ih6) * W + iw6, mask=mask_p, other=0.0)
++
++        c7 = (r + 7) // (KH * KW)
++        rem7 = (r + 7) % (KH * KW)
++        ih7 = oh + rem7 // KW
++        iw7 = ow + rem7 % KW
++        xv7 = tl.load(x_ptr + ((n * C + c7) * H + ih7) * W + iw7, mask=mask_p, other=0.0)
++
++        # Accumulate
+         acc += xv[:, None] * wv[None, :]
++        acc += xv1[:, None] * wv1[None, :]
++        acc += xv2[:, None] * wv2[None, :]
++        acc += xv3[:, None] * wv3[None, :]
++        acc += xv4[:, None] * wv4[None, :]
++        acc += xv5[:, None] * wv5[None, :]
++        acc += xv6[:, None] * wv6[None, :]
++        acc += xv7[:, None] * wv7[None, :]
++
+     cb = tl.load(cb_ptr + offs_c, mask=mask_c, other=0.0)
+     b = tl.load(b_ptr + offs_c, mask=mask_c, other=0.0)
+     acc = tl.maximum(acc + cb[None, :], 0.0) + b[None, :]

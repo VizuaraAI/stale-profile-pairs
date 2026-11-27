@@ -1,0 +1,8 @@
+{
+ "pair": "P489",
+ "task": "level2__12_Gemm_Multiply_LeakyReLU",
+ "edits_between_old_and_current": 3,
+ "kernels_launched_per_call": [
+  "linear_act_kernel"
+ ]
+}

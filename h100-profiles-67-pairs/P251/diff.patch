@@ -1,0 +1,50 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,18 +1,35 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
++"""Hand-written optimized kernel for KernelBench level 2 task 29: linear layer, then Mish twice, in one kernel."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 32, 32, 32
+-NUM_WARPS, NUM_STAGES = 4, 1
++BLOCK_M, BLOCK_N, BLOCK_K = 128, 128, 32
++NUM_WARPS, NUM_STAGES = 4, 3
+ 
+ 
+ @triton.jit
+ def _mish(x):
++    # Compute mish(x) = x * tanh(log(1 + exp(x)))
++    # For numerical stability, use the identity:
++    # For x >= 0: tanh(log(1 + exp(x))) = (exp(x) - 1) / (exp(x) + 1)
++    # For x < 0: tanh(log(1 + exp(x))) = 1 - 2 / (exp(2x) + 1)
+     sp = tl.where(x > 20.0, x, tl.log(1.0 + tl.exp(tl.minimum(x, 20.0))))
+     t = 1.0 - 2.0 / (tl.exp(2.0 * sp) + 1.0)
+     return x * t
++
++
++@triton.jit
++def _mish_fused(x):
++    # Compute mish(mish(x)) in a single pass for efficiency
++    # First compute mish(x)
++    sp1 = tl.where(x > 20.0, x, tl.log(1.0 + tl.exp(tl.minimum(x, 20.0))))
++    t1 = 1.0 - 2.0 / (tl.exp(2.0 * sp1) + 1.0)
++    x1 = x * t1
++    # Then compute mish(mish(x)) = mish(x1)
++    sp2 = tl.where(x1 > 20.0, x1, tl.log(1.0 + tl.exp(tl.minimum(x1, 20.0))))
++    t2 = 1.0 - 2.0 / (tl.exp(2.0 * sp2) + 1.0)
++    return x1 * t2
+ 
+ 
+ @triton.jit
+@@ -30,7 +47,7 @@
+         b = tl.load(w_ptr + offs_n[None, :] * K + cols[:, None], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
+     bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
+-    acc = _mish(_mish(acc + bias[None, :]))
++    acc = _mish_fused(acc + bias[None, :])
+     tl.store(y_ptr + offs_m[:, None] * N + offs_n[None, :], acc, mask=(offs_m[:, None] < M) & (offs_n[None, :] < N))
+ 
+ 

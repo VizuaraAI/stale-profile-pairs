@@ -1,0 +1,8 @@
+{
+ "pair": "P882",
+ "task": "level1__40_LayerNorm",
+ "edits_between_old_and_current": 3,
+ "kernels_launched_per_call": [
+  "ln_kernel"
+ ]
+}

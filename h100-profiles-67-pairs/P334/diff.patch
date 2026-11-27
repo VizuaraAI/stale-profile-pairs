@@ -1,0 +1,66 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,5 +1,4 @@
+-"""Hand-written starting kernel for KernelBench level 1 task 50: a 2D convolution, 3 to 96 channels, 11 by 11, stride 4,
+-padding 2, computed directly in one kernel."""
++"""Optimized Triton kernel for 2D convolution."""
+ import torch
+ import torch.nn as nn
+ import triton
+@@ -18,25 +17,46 @@
+     offs_c = pid_c * BLOCK_C + tl.arange(0, BLOCK_C)
+     mask_p = offs_p < NB * OH * OW
+     mask_c = offs_c < OC
++    
++    # Decode position
+     ow = offs_p % OW
+     t = offs_p // OW
+     oh = t % OH
+     n = t // OH
++    
++    # Precompute input indices
+     ih0 = oh * stride - padding
+     iw0 = ow * stride - padding
+-    R = C * KH * KW
++    
++    # Initialize accumulator
+     acc = tl.zeros((BLOCK_P, BLOCK_C), dtype=tl.float32)
+-    for r in range(0, R):
+-        c = r // (KH * KW)
+-        rem = r % (KH * KW)
+-        ih = ih0 + rem // KW
+-        iw = iw0 + rem % KW
+-        m = mask_p & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W)
+-        xv = tl.load(x_ptr + ((n * C + c) * H + ih) * W + iw, mask=m, other=0.0)
+-        wv = tl.load(w_ptr + offs_c * R + r, mask=mask_c, other=0.0)
+-        acc += xv[:, None] * wv[None, :]
++    
++    # Loop over input channels
++    for c in range(0, C, 1):
++        # Load input tile
++        input_tile = tl.zeros((BLOCK_P, 1), dtype=tl.float32)
++        for kh in range(0, KH):
++            for kw in range(0, KW):
++                ih = ih0 + kh
++                iw = iw0 + kw
++                
++                # Check bounds
++                m = mask_p & (ih >= 0) & (ih < H) & (iw >= 0) & (iw < W)
++                
++                # Load input value
++                xv = tl.load(x_ptr + ((n * C + c) * H + ih) * W + iw, mask=m, other=0.0)
++                
++                # Load weight value
++                wv = tl.load(w_ptr + (offs_c * C * KH * KW + c * KH * KW + kh * KW + kw), mask=mask_c, other=0.0)
++                
++                # Compute product and accumulate
++                acc += xv[:, None] * wv[None, :]
++    
++    # Add bias
+     bias = tl.load(b_ptr + offs_c, mask=mask_c, other=0.0)
+     acc += bias[None, :]
++    
++    # Store result
+     y_off = ((n[:, None] * OC + offs_c[None, :]) * OH + oh[:, None]) * OW + ow[:, None]
+     tl.store(y_ptr + y_off, acc, mask=mask_p[:, None] & mask_c[None, :])
+ 

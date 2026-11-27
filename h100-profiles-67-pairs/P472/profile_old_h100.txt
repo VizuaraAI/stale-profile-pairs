@@ -1,0 +1,19 @@
+Kernel ln_stats_kernel: grid 16, block 128 threads, duration 1.76 ms under the profiler.
+Throughput, percent of peak: compute 0.5, memory 4.6, DRAM 4.6, L2 5.1, L1 0.5.
+Hit rates: L1 0.0%, L2 0.4%.
+Occupancy: 6.2% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 16 (32 per thread), by shared memory 28 (1040 bytes per block).
+Largest stall reasons, share of stall samples: long_scoreboard 96%, wait 3%, barrier 0%, branch_resolving 0%.
+
+Kernel ln_apply_kernel: grid 131072, block 128 threads, duration 0.19 ms under the profiler.
+Throughput, percent of peak: compute 19.1, memory 86.2, DRAM 86.2, L2 82.4, L1 23.0.
+Hit rates: L1 7.7%, L2 58.1%.
+Occupancy: 87.1% of 48 warps per SM achieved. Block limits per SM: by block size 32, by registers 16 (30 per thread), by shared memory 32 (1024 bytes per block).
+Largest stall reasons, share of stall samples: long_scoreboard 92%, drain 4%, short_scoreboard 2%, wait 1%.
+
+Hottest source lines, share of samples in this file:
+  line 25, 49.9%: acc2 += v * v
+  line 49, 42.7%: y = (x - mean) * rstd * w + b
+  line 23, 2.7%: v = tl.load(base + offs, mask=offs < L, other=0.0)
+  line 50, 2.2%: tl.store(y_ptr + row * L + offs, y, mask=mask)
+  line 38, 0.7%: offs = chunk * BLOCK + tl.arange(0, BLOCK)
+  line 45, 0.4%: w = tl.load(w_ptr + offs, mask=mask, other=1.0)

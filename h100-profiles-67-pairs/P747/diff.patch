@@ -1,0 +1,37 @@
+--- old_kernel.py
++++ current_kernel.py
+@@ -1,11 +1,11 @@
+-"""Hand-written starting kernel for KernelBench level 2 task 12: linear layer, multiply, LeakyReLU, in one kernel."""
++"""Optimized Triton kernel for KernelBench level 2 task 12."""
+ import torch
+ import torch.nn as nn
+ import triton
+ import triton.language as tl
+ 
+-BLOCK_M, BLOCK_N, BLOCK_K = 32, 32, 32
+-NUM_WARPS, NUM_STAGES = 4, 1
++BLOCK_M, BLOCK_N, BLOCK_K = 256, 128, 64
++NUM_WARPS, NUM_STAGES = 8, 2
+ 
+ 
+ @triton.jit
+@@ -15,14 +15,14 @@
+     pid_n = tl.program_id(1)
+     offs_m = pid_m * BLOCK_M + tl.arange(0, BLOCK_M)
+     offs_n = pid_n * BLOCK_N + tl.arange(0, BLOCK_N)
+-    offs_k = tl.arange(0, BLOCK_K)
+     acc = tl.zeros((BLOCK_M, BLOCK_N), dtype=tl.float32)
++    
+     for k in range(0, tl.cdiv(K, BLOCK_K)):
+-        cols = k * BLOCK_K + offs_k
+-        a = tl.load(x_ptr + offs_m[:, None] * K + cols[None, :], mask=(offs_m[:, None] < M) & (cols[None, :] < K), other=0.0)
+-        # weight is (N, K); this tile is its transpose, (BLOCK_K, BLOCK_N)
+-        b = tl.load(w_ptr + offs_n[None, :] * K + cols[:, None], mask=(cols[:, None] < K) & (offs_n[None, :] < N), other=0.0)
++        offs_k = k * BLOCK_K + tl.arange(0, BLOCK_K)
++        a = tl.load(x_ptr + offs_m[:, None] * K + offs_k[None, :], mask=(offs_m[:, None] < M) & (offs_k[None, :] < K), other=0.0)
++        b = tl.load(w_ptr + offs_n[None, :] * K + offs_k[:, None], mask=(offs_k[:, None] < K) & (offs_n[None, :] < N), other=0.0)
+         acc = tl.dot(a, b, acc, input_precision="ieee")
++    
+     bias = tl.load(bias_ptr + offs_n, mask=offs_n < N, other=0.0)
+     acc = (acc + bias[None, :]) * multiplier
+     acc = tl.where(acc >= 0, acc, acc * negative_slope)
